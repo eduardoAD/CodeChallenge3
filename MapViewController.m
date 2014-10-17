@@ -15,6 +15,7 @@
 @property (strong, nonatomic) IBOutlet MKMapView *mapView;
 @property CLLocationManager *myLocationManager;
 @property CLPlacemark *currentLocation;
+@property NSArray *stringDirections;
 
 @end
 
@@ -22,6 +23,10 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    [self searchCurrentLocation];
+}
+
+- (void)searchCurrentLocation{
     self.myLocationManager = [[CLLocationManager alloc] init];
     [self.myLocationManager requestWhenInUseAuthorization];
     self.myLocationManager.delegate = self;
@@ -49,6 +54,37 @@
     pin.image = [UIImage imageNamed:@"bikeImage"];
 
     return pin;
+}
+
+- (void)mapView:(MKMapView *)mapView annotationView:(MKAnnotationView *)view calloutAccessoryControlTapped:(UIControl *)control{
+    CLLocationCoordinate2D coord1;
+    coord1.latitude = [[self.stationBike objectForKey:@"latitude"] doubleValue];
+    coord1.longitude = [[self.stationBike objectForKey:@"longitude"] doubleValue];
+    MKPlacemark *placemark1 = [[MKPlacemark alloc] initWithCoordinate:coord1 addressDictionary:nil];
+    MKMapItem *dest = [[MKMapItem alloc]initWithPlacemark:placemark1];
+
+    MKDirectionsRequest *request = [MKDirectionsRequest new];
+    request.source = [MKMapItem mapItemForCurrentLocation];
+    request.destination = dest;
+    request.transportType = MKDirectionsTransportTypeWalking;
+    MKDirections *directions = [[MKDirections alloc] initWithRequest:request];
+    [directions calculateDirectionsWithCompletionHandler:^(MKDirectionsResponse *response, NSError *error)
+     {
+         MKRoute *route = response.routes.firstObject;
+         self.stringDirections = [[NSArray alloc]initWithArray:route.steps];
+     }];
+    NSMutableString *message = [[NSMutableString alloc]init];
+    for (MKRouteStep *step in self.stringDirections) {
+        //NSLog(@"Step: %@", step.instructions);
+        [message appendString:step.instructions];
+        [message appendString:@"\n"];
+    }
+    UIAlertView *textualDirections = [[UIAlertView alloc] initWithTitle:@"Directions"
+                                                                message:message
+                                                               delegate:nil
+                                                      cancelButtonTitle:@"OK"
+                                                      otherButtonTitles:nil];
+    [textualDirections show];
 }
 
 - (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray *)locations{
@@ -98,5 +134,6 @@
     [self.mapView setRegion:region animated:YES];
     [self.mapView regionThatFits:region];
 }
+
 
 @end
