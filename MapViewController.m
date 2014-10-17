@@ -12,7 +12,6 @@
 @interface MapViewController () <MKMapViewDelegate>
 
 @property (strong, nonatomic) IBOutlet MKMapView *mapView;
-@property NSArray *stringDirections;
 @property MKMapItem *source;
 @property MKMapItem *destination;
 @property NSMutableString *message;
