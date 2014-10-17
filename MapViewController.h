@@ -7,8 +7,10 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <CoreLocation/CoreLocation.h>
 
 @interface MapViewController : UIViewController
 @property NSDictionary *stationBike;
+@property CLPlacemark *currentLocation;
 
 @end

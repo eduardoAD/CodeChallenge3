@@ -8,13 +8,16 @@
 
 #import "StationsListViewController.h"
 #import "MapViewController.h"
+#import <CoreLocation/CoreLocation.h>
 
-@interface StationsListViewController () <UITabBarDelegate, UITableViewDataSource, UITableViewDelegate>
+@interface StationsListViewController () <UITabBarDelegate, UITableViewDataSource, UITableViewDelegate, CLLocationManagerDelegate>
 
 @property (strong, nonatomic) IBOutlet UITableView *tableView;
 @property (strong, nonatomic) IBOutlet UISearchBar *searchBar;
 @property NSArray *stationBeanList;
 @property NSDictionary *selectedStation;
+@property CLLocationManager *myLocationManager;
+@property CLPlacemark *currentLocation;
 
 @end
 
@@ -23,6 +26,7 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.stationBeanList = [[NSArray alloc]init];
+    [self searchCurrentLocation];
 
     NSURL *stringUrl = [NSURL URLWithString:@"http://www.divvybikes.com/stations/json/"];
     NSURLRequest *request = [NSURLRequest requestWithURL:stringUrl];
@@ -32,6 +36,32 @@
     }];
 }
 
+#pragma mark - Localization
+
+- (void)searchCurrentLocation{
+    self.myLocationManager = [[CLLocationManager alloc] init];
+    [self.myLocationManager requestWhenInUseAuthorization];
+    self.myLocationManager.delegate = self;
+
+    [self.myLocationManager startUpdatingLocation];
+}
+
+- (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray *)locations{
+    for (CLLocation *location in locations) {
+        if(location.verticalAccuracy < 1000 && location.horizontalAccuracy < 1000){
+            [self reverseGeocode:location];
+            [self.myLocationManager stopUpdatingLocation];
+            break;
+        }
+    }
+}
+
+- (void)reverseGeocode:(CLLocation *)location{
+    CLGeocoder *geocoder = [CLGeocoder new];
+    [geocoder reverseGeocodeLocation:location completionHandler:^(NSArray *placemarks, NSError *error) {
+        self.currentLocation = placemarks.firstObject;
+    }];
+}
 
 #pragma mark - UITableView
 
@@ -59,6 +89,7 @@
 -(void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender{
     MapViewController *destination = [segue destinationViewController];
     destination.stationBike = self.selectedStation;
+    destination.currentLocation = self.currentLocation;
 }
 
 @end

@@ -8,14 +8,14 @@
 
 #import "MapViewController.h"
 #import <MapKit/MapKit.h>
-#import <CoreLocation/CoreLocation.h>
 
-@interface MapViewController () <MKMapViewDelegate, CLLocationManagerDelegate>
+@interface MapViewController () <MKMapViewDelegate>
 
 @property (strong, nonatomic) IBOutlet MKMapView *mapView;
-@property CLLocationManager *myLocationManager;
-@property CLPlacemark *currentLocation;
 @property NSArray *stringDirections;
+@property MKMapItem *source;
+@property MKMapItem *destination;
+@property NSMutableString *message;
 
 @end
 
@@ -23,15 +23,24 @@
 
 - (void)viewDidLoad {
     [super viewDidLoad];
-    [self searchCurrentLocation];
-}
 
-- (void)searchCurrentLocation{
-    self.myLocationManager = [[CLLocationManager alloc] init];
-    [self.myLocationManager requestWhenInUseAuthorization];
-    self.myLocationManager.delegate = self;
+    CLLocationCoordinate2D coord1;
+    coord1.latitude = self.currentLocation.location.coordinate.latitude;
+    coord1.longitude = self.currentLocation.location.coordinate.longitude;
+    MKPlacemark *placemark1 = [[MKPlacemark alloc] initWithCoordinate:coord1 addressDictionary:nil];
+    self.source = [[MKMapItem alloc]initWithPlacemark:placemark1];
 
-    [self.myLocationManager startUpdatingLocation];
+    CLLocationCoordinate2D coord2;
+    coord2.latitude = [[self.stationBike objectForKey:@"latitude"] doubleValue];
+    coord2.longitude = [[self.stationBike objectForKey:@"longitude"] doubleValue];
+    MKPlacemark *placemark2 = [[MKPlacemark alloc] initWithCoordinate:coord2 addressDictionary:nil];
+    self.destination = [[MKMapItem alloc]initWithPlacemark:placemark2];
+
+    self.message = [[NSMutableString alloc]init];
+
+    [self getDirections];
+    [self addAnnotation];
+    [self zoomIn];
 }
 
 - (void)locationManager:(CLLocationManager *)manager didFailWithError:(NSError *)error{
@@ -56,55 +65,32 @@
     return pin;
 }
 
-- (void)mapView:(MKMapView *)mapView annotationView:(MKAnnotationView *)view calloutAccessoryControlTapped:(UIControl *)control{
-    CLLocationCoordinate2D coord1;
-    coord1.latitude = [[self.stationBike objectForKey:@"latitude"] doubleValue];
-    coord1.longitude = [[self.stationBike objectForKey:@"longitude"] doubleValue];
-    MKPlacemark *placemark1 = [[MKPlacemark alloc] initWithCoordinate:coord1 addressDictionary:nil];
-    MKMapItem *dest = [[MKMapItem alloc]initWithPlacemark:placemark1];
-
+-(void)getDirections{
     MKDirectionsRequest *request = [MKDirectionsRequest new];
-    request.source = [MKMapItem mapItemForCurrentLocation];
-    request.destination = dest;
+    request.source = self.source;
+    request.destination = self.destination;
     request.transportType = MKDirectionsTransportTypeWalking;
     MKDirections *directions = [[MKDirections alloc] initWithRequest:request];
     [directions calculateDirectionsWithCompletionHandler:^(MKDirectionsResponse *response, NSError *error)
      {
-         MKRoute *route = response.routes.firstObject;
-         self.stringDirections = [[NSArray alloc]initWithArray:route.steps];
+         for (MKRoute *route in response.routes) {
+             for (MKRouteStep *step in route.steps) {
+                 [self.mapView addOverlay:[step polyline] level:MKOverlayLevelAboveRoads];
+                 [self.message appendString:step.instructions];
+                 [self.message appendString:@"\n"];
+             }
+         }
      }];
-    NSMutableString *message = [[NSMutableString alloc]init];
-    for (MKRouteStep *step in self.stringDirections) {
-        //NSLog(@"Step: %@", step.instructions);
-        [message appendString:step.instructions];
-        [message appendString:@"\n"];
-    }
+}
+
+- (void)mapView:(MKMapView *)mapView annotationView:(MKAnnotationView *)view calloutAccessoryControlTapped:(UIControl *)control{
     UIAlertView *textualDirections = [[UIAlertView alloc] initWithTitle:@"Directions"
-                                                                message:message
+                                                                message:self.message
                                                                delegate:nil
                                                       cancelButtonTitle:@"OK"
                                                       otherButtonTitles:nil];
+    textualDirections.delegate = self;
     [textualDirections show];
-}
-
-- (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray *)locations{
-    for (CLLocation *location in locations) {
-        if(location.verticalAccuracy < 1000 && location.horizontalAccuracy < 1000){
-            [self reverseGeocode:location];
-            [self.myLocationManager stopUpdatingLocation];
-            break;
-        }
-    }
-}
-
-- (void)reverseGeocode:(CLLocation *)location{
-    CLGeocoder *geocoder = [CLGeocoder new];
-    [geocoder reverseGeocodeLocation:location completionHandler:^(NSArray *placemarks, NSError *error) {
-        self.currentLocation = placemarks.firstObject;
-
-        [self addAnnotation];
-        [self zoomIn];
-    }];
 }
 
 - (void)addAnnotation{
@@ -135,5 +121,15 @@
     [self.mapView regionThatFits:region];
 }
 
+- (MKOverlayRenderer *)mapView:(MKMapView *)mapView rendererForOverlay:(id<MKOverlay>)overlay
+{
+    if ([overlay isKindOfClass:[MKPolyline class]]) {
+        MKPolyline *route = overlay;
+        MKPolylineRenderer *routeRenderer = [[MKPolylineRenderer alloc] initWithPolyline:route];
+        routeRenderer.strokeColor = [UIColor blueColor];
+        return routeRenderer;
+    }
+    else return nil;
+}
 
 @end
