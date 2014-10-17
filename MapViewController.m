@@ -99,7 +99,8 @@
     coord.longitude = [[self.stationBike objectForKey:@"longitude"] doubleValue];
     annotation.coordinate = coord;
     annotation.title = [self.stationBike objectForKey:@"stAddress1"];
-    annotation.subtitle = [[self.stationBike objectForKey:@"availableBikes"] description];
+    NSString *bikes = [[self.stationBike objectForKey:@"availableBikes"] description];
+    annotation.subtitle = [NSString stringWithFormat:@"%@ bikes availables",bikes];
 
     [self.mapView addAnnotation:annotation];
 }

@@ -10,7 +10,7 @@
 #import "MapViewController.h"
 #import <CoreLocation/CoreLocation.h>
 
-@interface StationsListViewController () <UITabBarDelegate, UITableViewDataSource, UITableViewDelegate, CLLocationManagerDelegate>
+@interface StationsListViewController () <UISearchBarDelegate, UITableViewDataSource, UITableViewDelegate, CLLocationManagerDelegate>
 
 @property (strong, nonatomic) IBOutlet UITableView *tableView;
 @property (strong, nonatomic) IBOutlet UISearchBar *searchBar;
@@ -74,7 +74,8 @@
 {
     UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:@"Cell"];
     cell.textLabel.text = [(NSDictionary *)[self.stationBeanList objectAtIndex:indexPath.row] objectForKey:@"stAddress1"];
-    cell.detailTextLabel.text = [[(NSDictionary *)[self.stationBeanList objectAtIndex:indexPath.row] objectForKey:@"availableBikes"] description];
+    NSString *bikes =[[(NSDictionary *)[self.stationBeanList objectAtIndex:indexPath.row] objectForKey:@"availableBikes"] description];
+    cell.detailTextLabel.text = [NSString stringWithFormat:@"%@ bikes availables",bikes];
     return cell;
 }
 
@@ -92,4 +93,17 @@
     destination.currentLocation = self.currentLocation;
 }
 
+#pragma mark - Search bar
+
+- (void)searchBarTextDidEndEditing:(UISearchBar *)searchBar {
+    [self handleSearch:searchBar];
+}
+
+- (void)handleSearch:(UISearchBar *)searchBar {
+    NSLog(@"User searched for %@", searchBar.text);
+}
+
+-(void)searchBar:(UISearchBar *)searchBar textDidChange:(NSString *)searchText{
+    NSLog(@"*User searched for %@", searchBar.text);
+}
 @end
