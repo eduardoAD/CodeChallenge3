@@ -18,6 +18,7 @@
 @property NSDictionary *selectedStation;
 @property CLLocationManager *myLocationManager;
 @property CLPlacemark *currentLocation;
+@property UIRefreshControl *refreshControl;
 
 @end
 
@@ -26,12 +27,22 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.stationBeanList = [[NSArray alloc]init];
+    self.refreshControl = [[UIRefreshControl alloc]init];
+    self.refreshControl.tintColor = [UIColor blueColor];
+    [self.tableView addSubview:self.refreshControl];
+    [self.refreshControl addTarget:self action:@selector(loadData) forControlEvents:UIControlEventValueChanged];
+
     [self searchCurrentLocation];
 
+    [self loadData];
+}
+
+- (void)loadData{
     NSURL *stringUrl = [NSURL URLWithString:@"http://www.divvybikes.com/stations/json/"];
     NSURLRequest *request = [NSURLRequest requestWithURL:stringUrl];
     [NSURLConnection sendAsynchronousRequest:request queue:[NSOperationQueue mainQueue] completionHandler:^(NSURLResponse *response, NSData *data, NSError *connectionError) {
         self.stationBeanList = [((NSDictionary *)[NSJSONSerialization JSONObjectWithData:data options:0 error:nil]) objectForKey:@"stationBeanList"];
+        [self.refreshControl endRefreshing];
         [self.tableView reloadData];
     }];
 }
